@@ -34,6 +34,19 @@ async function run() {
         const db = client.db('parcelDB');
         const parcelsCollection = db.collection('parcels');
 
+        app.post('/parcels', async (req, res) => {
+            try {
+                const parcelData = req.body;
+                const result = await parcelsCollection.insertOne(parcelData);
+                res.status(201).send(result);
+            } catch (error) {
+                res.status(500).send({
+                    message: error.message
+                });
+            }
+        });
+
+
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({
         //     ping: 1
