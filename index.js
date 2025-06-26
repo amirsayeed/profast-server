@@ -34,6 +34,35 @@ async function run() {
         const db = client.db('parcelDB');
         const parcelsCollection = db.collection('parcels');
 
+
+        // GET all parcels OR filter by created_by email
+        app.get('/parcels', async (req, res) => {
+            try {
+                const email = req.query.email;
+
+                let query = {};
+                if (email) {
+                    query = {
+                        created_by: email
+                    };
+                }
+
+                const parcels = await parcelsCollection
+                    .find(query)
+                    .sort({
+                        createdAt: -1
+                    }) // latest first
+                    .toArray();
+
+                res.send(parcels);
+            } catch (error) {
+                res.status(500).send({
+                    message: error.message
+                });
+            }
+        });
+
+
         app.post('/parcels', async (req, res) => {
             try {
                 const parcelData = req.body;
