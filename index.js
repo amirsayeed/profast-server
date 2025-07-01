@@ -13,7 +13,8 @@ app.use(express.json());
 
 const {
     MongoClient,
-    ServerApiVersion
+    ServerApiVersion,
+    ObjectId
 } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tnmpmcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -75,6 +76,22 @@ async function run() {
             }
         });
 
+        app.delete('/parcels/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const result = await parcelsCollection.deleteOne({
+                    _id: new ObjectId(id)
+                });
+
+                res.send(result);
+            } catch (error) {
+                console.error('Error deleting parcel:', error);
+                res.status(500).send({
+                    message: 'Failed to delete parcel'
+                });
+            }
+        });
 
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({
