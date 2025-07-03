@@ -63,6 +63,36 @@ async function run() {
             }
         });
 
+        app.get('/parcels/:id', async (req, res) => {
+            const {
+                id
+            } = req.params;
+
+            if (!ObjectId.isValid(id)) {
+                return res.status(400).json({
+                    error: 'Invalid parcel ID'
+                });
+            }
+
+            try {
+                const parcel = await parcelsCollection.findOne({
+                    _id: new ObjectId(id)
+                });
+
+                if (!parcel) {
+                    return res.status(404).json({
+                        error: 'Parcel not found'
+                    });
+                }
+
+                res.json(parcel);
+            } catch (err) {
+                console.error('Error fetching parcel:', err);
+                res.status(500).json({
+                    error: 'Server error'
+                });
+            }
+        });
 
         app.post('/parcels', async (req, res) => {
             try {
