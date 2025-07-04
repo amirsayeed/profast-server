@@ -36,6 +36,7 @@ async function run() {
 
         const db = client.db('parcelDB');
         const parcelsCollection = db.collection('parcels');
+        const paymentsCollection = db.collection('payments');
 
 
         // GET all parcels OR filter by created_by email
@@ -124,6 +125,76 @@ async function run() {
                 });
             }
         });
+
+
+        app.get('/payments', async (req, res) => {
+            try {
+                const userEmail = req.query.email;
+
+                const query = userEmail ? {
+                    email: userEmail
+                } : {};
+                const options = {
+                    sort: {
+                        paid_at: -1
+                    }
+                };
+
+                const payments = await paymentsCollection.find(query, options).toArray();
+                res.send(payments);
+            } catch (error) {
+                console.error('Error fetching payment history:', error);
+                res.status(500).send({
+                    message: 'Failed to get payments'
+                });
+            }
+        })
+
+        app.post('/payments', async (req, res) => {
+            const {
+                parcelId,
+                email,
+                amount,
+                paymentMethod,
+                transactionId
+            } = req.body;
+
+            try {
+                // Update parcel's payment_status to "paid"
+                const parcelResult = await parcelsCollection.updateOne({
+                    _id: new ObjectId(parcelId)
+                }, {
+                    $set: {
+                        payment_status: "paid"
+                    }
+                });
+
+                // Save payment history
+                const paymentData = {
+                    email,
+                    parcelId,
+                    amount,
+                    paymentMethod,
+                    transactionId,
+                    paid_at_string: new Date().toISOString(),
+                    paid_at: new Date()
+                };
+
+                const paymentResult = await paymentsCollection.insertOne(paymentData);
+
+                res.status(201).json({
+                    message: "Payment confirmed and recorded.",
+                    insertedId: paymentResult.insertedId
+                });
+
+            } catch (err) {
+                console.error(err);
+                res.status(500).send({
+                    message: "Failed to confirm payment."
+                });
+            }
+        });
+
 
         app.post('/create-payment-intent', async (req, res) => {
             const amountInCents = req.body.amountInCents;
