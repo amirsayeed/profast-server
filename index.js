@@ -277,6 +277,66 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/riders/pending', async (req, res) => {
+            try {
+                const pendingRiders = await ridersCollection
+                    .find({
+                        status: 'pending'
+                    })
+                    .toArray();
+                res.send(pendingRiders);
+            } catch (error) {
+                console.error('Error fetching pending riders:', error);
+                res.status(500).send({
+                    message: 'Failed to load pending riders'
+                });
+            }
+        });
+
+        app.patch('/riders/:id', async (req, res) => {
+            const {
+                id
+            } = req.params;
+            const {
+                status
+            } = req.body;
+
+            if (!['active', 'cancelled', 'pending'].includes(status)) {
+                return res.status(400).send({
+                    message: 'Invalid status value'
+                });
+            }
+
+            try {
+                const result = await ridersCollection.updateOne({
+                    _id: new ObjectId(id)
+                }, {
+                    $set: {
+                        status
+                    }
+                });
+
+                if (result.modifiedCount > 0) {
+                    res.send({
+                        success: true,
+                        modifiedCount: result.modifiedCount
+                    });
+                } else {
+                    res.status(404).send({
+                        success: false,
+                        message: 'Rider not found or already updated'
+                    });
+                }
+            } catch (error) {
+                console.error('Error updating rider status:', error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Server error'
+                });
+            }
+        });
+
+
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({
         //     ping: 1
