@@ -293,6 +293,19 @@ async function run() {
             }
         });
 
+        app.get('/riders/active', async (req, res) => {
+            try {
+                const activeRiders = await ridersCollection.find({
+                    status: 'active'
+                }).toArray();
+                res.send(activeRiders);
+            } catch (err) {
+                res.status(500).send({
+                    message: 'Error fetching active riders'
+                });
+            }
+        });
+
         app.patch('/riders/:id', async (req, res) => {
             const {
                 id
