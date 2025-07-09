@@ -311,7 +311,8 @@ async function run() {
                 id
             } = req.params;
             const {
-                status
+                status,
+                email
             } = req.body;
 
             if (!['active', 'cancelled', 'pending'].includes(status)) {
@@ -339,6 +340,20 @@ async function run() {
                         success: false,
                         message: 'Rider not found or already updated'
                     });
+                }
+
+                //update user's role
+                if (status === 'active') {
+                    const query = {
+                        email
+                    }
+                    const updatedDoc = {
+                        $set: {
+                            role: 'rider'
+                        }
+                    }
+                    const roleResult = await usersCollection.updateOne(query, updatedDoc);
+                    console.log(roleResult.modifiedCount);
                 }
             } catch (error) {
                 console.error('Error updating rider status:', error);
