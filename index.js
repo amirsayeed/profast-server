@@ -56,6 +56,20 @@ const verifyTokenEmail = (req, res, next) => {
     next();
 }
 
+const verifyAdmin = async (req, res, next) => {
+    const email = req.decoded.email;
+    const query = {
+        email
+    };
+    const user = await usersCollection.findOne(query);
+    if (!user || user.role !== 'admin') {
+        return res.status(403).send({
+            message: 'forbidden access'
+        })
+    }
+    next();
+}
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tnmpmcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -123,7 +137,7 @@ async function run() {
             }
         });
 
-        app.patch("/users/:id/role", async (req, res) => {
+        app.patch("/users/:id/role", verifyFBToken, verifyAdmin, async (req, res) => {
             const {
                 id
             } = req.params;
@@ -369,7 +383,7 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/riders/pending', async (req, res) => {
+        app.get('/riders/pending', verifyFBToken, verifyAdmin, async (req, res) => {
             try {
                 const pendingRiders = await ridersCollection
                     .find({
@@ -385,7 +399,7 @@ async function run() {
             }
         });
 
-        app.get('/riders/active', async (req, res) => {
+        app.get('/riders/active', verifyFBToken, verifyAdmin, async (req, res) => {
             try {
                 const activeRiders = await ridersCollection.find({
                     status: 'active'
