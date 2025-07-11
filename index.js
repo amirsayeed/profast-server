@@ -25,50 +25,6 @@ admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
 
-const verifyFBToken = async (req, res, next) => {
-    const authHeader = req.headers?.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).send({
-            message: 'unauthorized access'
-        });
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    // verify token
-    try {
-        const decoded = await admin.auth().verifyIdToken(token);
-        req.decoded = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).send({
-            message: 'unauthorized access'
-        })
-    }
-}
-
-const verifyTokenEmail = (req, res, next) => {
-    if (req.query.email !== req.decoded.email) {
-        return res.status(403).send({
-            message: 'forbidden access'
-        })
-    }
-    next();
-}
-
-const verifyAdmin = async (req, res, next) => {
-    const email = req.decoded.email;
-    const query = {
-        email
-    };
-    const user = await usersCollection.findOne(query);
-    if (!user || user.role !== 'admin') {
-        return res.status(403).send({
-            message: 'forbidden access'
-        })
-    }
-    next();
-}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tnmpmcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -91,6 +47,51 @@ async function run() {
         const paymentsCollection = db.collection('payments');
         const usersCollection = db.collection('users');
         const ridersCollection = db.collection('riders');
+
+        const verifyFBToken = async (req, res, next) => {
+            const authHeader = req.headers?.authorization;
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                return res.status(401).send({
+                    message: 'unauthorized access'
+                });
+            }
+
+            const token = authHeader.split(' ')[1];
+
+            // verify token
+            try {
+                const decoded = await admin.auth().verifyIdToken(token);
+                req.decoded = decoded;
+                next();
+            } catch (error) {
+                return res.status(401).send({
+                    message: 'unauthorized access'
+                })
+            }
+        }
+
+        const verifyTokenEmail = (req, res, next) => {
+            if (req.query.email !== req.decoded.email) {
+                return res.status(403).send({
+                    message: 'forbidden access'
+                })
+            }
+            next();
+        }
+
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = {
+                email
+            }
+            const user = await usersCollection.findOne(query);
+            if (!user || user.role !== 'admin') {
+                return res.status(403).send({
+                    message: 'forbidden access'
+                })
+            }
+            next();
+        }
 
         app.post('/users', async (req, res) => {
             const email = req.body.email;
@@ -201,15 +202,27 @@ async function run() {
         })
 
         // GET all parcels OR filter by created_by email
-        app.get('/parcels', verifyFBToken, verifyTokenEmail, async (req, res) => {
+        app.get('/parcels', verifyFBToken, async (req, res) => {
             try {
-                const email = req.query.email;
+                const {
+                    email,
+                    payment_status,
+                    delivery_status
+                } = req.query;
 
                 let query = {};
                 if (email) {
                     query = {
                         created_by: email
                     };
+                }
+
+                if (payment_status) {
+                    query.payment_status = payment_status
+                }
+
+                if (delivery_status) {
+                    query.delivery_status = delivery_status
                 }
 
                 const parcels = await parcelsCollection
@@ -221,8 +234,9 @@ async function run() {
 
                 res.send(parcels);
             } catch (error) {
+                console.error('Error fetching parcels:', error);
                 res.status(500).send({
-                    message: error.message
+                    message: 'Failed to get parcels'
                 });
             }
         });
@@ -411,6 +425,25 @@ async function run() {
                 });
             }
         });
+
+        app.get('/riders/available', async (req, res) => {
+            const {
+                district
+            } = req.query;
+
+            try {
+                const riders = await ridersCollection
+                    .find({
+                        district
+                    })
+                    .toArray();
+                res.send(riders);
+            } catch (err) {
+                res.status(500).send({
+                    message: 'Failed to load riders'
+                });
+            }
+        })
 
         app.patch('/riders/:id', async (req, res) => {
             const {
